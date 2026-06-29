@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS order_payments (
 
 -- olist_order_reviews_dataset
 CREATE TABLE IF NOT EXISTS order_reviews (
-	review_id VARCHAR PRIMARY KEY,
+	review_id VARCHAR,
 	order_id VARCHAR,
 	review_score INT,
 	review_comment_title VARCHAR,
