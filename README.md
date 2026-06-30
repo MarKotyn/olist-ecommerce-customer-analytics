@@ -12,4 +12,4 @@ SQL:
    2. Unique value check for product_category_name vs. product_category_name_english
       * **issue**: there are two product_category_name values missing translation
       * **fix**: manual addition of two translation pairs into product_translation table
-   3. 
+   3. Further checks reveal no additional key discrepancies within dataset.
