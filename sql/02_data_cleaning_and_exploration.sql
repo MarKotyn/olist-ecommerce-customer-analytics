@@ -39,3 +39,37 @@ SELECT DISTINCT(p.product_category_name),product_category_name_english FROM prod
 LEFT OUTER JOIN product_translation pt
 ON p.product_category_name = pt.product_category_name
 WHERE product_category_name_english IS NULL
+
+-- Check if all product_ids in order_items exist in products
+SELECT oi.product_id, p.product_id
+FROM order_items oi
+LEFT OUTER JOIN products p
+ON oi.product_id=p.product_id
+WHERE p.product_id IS NULL;
+
+-- Check if all order_ids in order_items, order_payments and order_reviews exists in orders
+SELECT  o.order_id, oi.order_id AS items_order_id, op.order_id AS payments_order_id, ore.order_id AS reviews_order_id
+FROM orders o
+LEFT OUTER JOIN order_items oi
+ON o.order_id=oi.order_id
+LEFT OUTER JOIN order_payments op
+ON o.order_id=op.order_id
+LEFT OUTER JOIN order_reviews ore
+ON o.order_id=ore.order_id
+WHERE o.order_id IS NULL;
+
+-- Check if all customer_ids in orders exist in customers
+SELECT c.customer_id, o.customer_id
+FROM customers c
+LEFT OUTER JOIN orders o
+ON c.customer_id=o.customer_id
+WHERE c.customer_id IS NULL;
+
+-- Check if all zip_code_prefixes in customers and sellers are in geolocation
+SELECT geolocation_zip_code_prefix, customer_zip_code_prefix, seller_zip_code_prefix
+FROM geolocation
+LEFT OUTER JOIN customers
+ON geolocation_zip_code_prefix=customer_zip_code_prefix
+LEFT OUTER JOIN sellers
+ON geolocation_zip_code_prefix=seller_zip_code_prefix
+WHERE geolocation_zip_code_prefix IS NULL
