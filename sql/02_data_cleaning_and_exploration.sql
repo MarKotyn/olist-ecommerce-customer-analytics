@@ -196,3 +196,47 @@ SUM(CASE WHEN seller_zip_code_prefix IS NULL THEN 1 ELSE 0 END) AS seller_zip_co
 SUM(CASE WHEN seller_city IS NULL THEN 1 ELSE 0 END) AS seller_city_null,
 SUM(CASE WHEN seller_state IS NULL THEN 1 ELSE 0 END) AS pseller_state_null
 FROM sellers;
+
+-- Duplicates in lookup tables: customers
+WITH duplicate_check AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY customer_id) AS row_num
+    FROM 
+        customers
+)
+SELECT * FROM duplicate_check 
+WHERE row_num > 1;
+
+-- Duplicates in lookup tables: products
+WITH duplicate_check AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY product_id) AS row_num
+    FROM 
+        products
+)
+SELECT * FROM duplicate_check 
+WHERE row_num > 1;
+
+-- Duplicates in lookup tables: sellers
+WITH duplicate_check AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY seller_id ORDER BY seller_id) AS row_num
+    FROM 
+        sellers
+)
+SELECT * FROM duplicate_check 
+WHERE row_num > 1;
+
+-- Duplicates in lookup tables: reviews
+WITH duplicate_check AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY review_id ORDER BY review_id) AS row_num
+    FROM 
+        order_reviews
+)
+SELECT * FROM duplicate_check 
+WHERE row_num > 1;

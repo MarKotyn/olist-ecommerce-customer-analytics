@@ -13,7 +13,14 @@ SQL:
       * **issue**: there are two product_category_name values missing translation
       * **fix**: manual addition of two translation pairs into product_translation table
    3. Primary/foreign key checks confirms no discrepancies between tables.
-   4. Null value checks:
+   4. Null value checks highlights:
       * many reviews with missing titles (88.34%) and messages (58.70%)
       * of all missing dates in orders table 0.01% are actual missing data (status "delivered" but no information in carrier_date and delivered_customer_date)
       * 1.85% of products are missing key information (e.g. product_category_name)
+   5. Duplicate value checks highlights:
+      * duplicated review_id confirmed from prior finding - to be investigated
+
+To be checked later:
+- fix logic in foregin key check
+- unavaliable order_status
+- product_ids with missing product_category_name impact
