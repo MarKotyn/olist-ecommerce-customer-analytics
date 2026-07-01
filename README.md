@@ -3,7 +3,7 @@ End-to-end e-commerce analytics project using PostgreSQL, Python and Power BI
 
 SQL:
 1. Table creation and csv import into pgAdmin:
-    * **issue**: olist_order_reviews_dataset failed to import
+    * **issue**:  olist_order_reviews_dataset failed to import
     * **fix**: review_id was set to be primary key in table creation, but it's not an unique value; primary key requirement was excluded from table
 
 
@@ -27,6 +27,10 @@ SQL:
       * products:
         * **issue** 1.85% of products are missing key information (e.g. product_category_name)
    5. Duplicate value checks highlights:
+      * customers table: while customer_id is set as primary key, we also have customer_unique_id where we have duplicates; however, it's not a duplicate issue since based on additional check in orders table system is generating new customer_id for each new order_id; customer_unique_id will be used later for client retention analysis
+      * geolocation table: since we have no primary key and no apparent candidate validation was run on whole rows
+        * **issue** it was found that 26.18% of rows are duplicated
+        * **fix** to eliminate technical redundancy and optimize database size, new geolocation table was created; identical rows were aggregated using `GROUP BY` filter over all columns into a new structure. The old table was safely archived, and new dataset was promoted to the primary `geolocation` table.
       * duplicated review_id confirmed from prior finding - to be investigated
 
 To be checked later:
