@@ -451,7 +451,7 @@ SELECT
 	review_id,
 	review_score,
 	review_comment_title,
-	review_comment_message,
+	review_comment_message
 	order_id,
 	COUNT(order_item_id) AS items_in_order,
 	COUNT(*) AS duplicate_count,
@@ -464,3 +464,25 @@ GROUP BY
 	review_comment_message,
 	order_id
 HAVING COUNT(*)>1 AND CASE WHEN COUNT(order_item_id) = COUNT(*) THEN 1 ELSE 0 END = 0;
+
+-- Investigate all reviews for orders that don't exist in order_items
+WITH incorrect_reviews AS (
+SELECT
+	ore.review_id,
+	ore.order_id,
+	oi.order_id,
+	o.order_status
+FROM order_reviews ore
+LEFT OUTER JOIN order_items oi
+ON ore.order_id=oi.order_id
+LEFT OUTER JOIN orders o
+ON ore.order_id=o.order_id
+WHERE oi.order_id IS NULL
+)
+
+SELECT
+	order_status,
+	COUNT(review_id)
+FROM incorrect_reviews
+GROUP BY order_status;
+
