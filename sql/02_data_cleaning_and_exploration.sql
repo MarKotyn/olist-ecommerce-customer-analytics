@@ -50,29 +50,68 @@ WHERE p.product_id IS NULL;
 -- Check if all order_ids in order_items, order_payments and order_reviews exists in orders
 SELECT  o.order_id, oi.order_id AS items_order_id, op.order_id AS payments_order_id, ore.order_id AS reviews_order_id
 FROM orders o
-LEFT OUTER JOIN order_items oi
+FULL OUTER JOIN order_items oi
 ON o.order_id=oi.order_id
-LEFT OUTER JOIN order_payments op
+FULL OUTER JOIN order_payments op
 ON o.order_id=op.order_id
-LEFT OUTER JOIN order_reviews ore
+FULL OUTER JOIN order_reviews ore
 ON o.order_id=ore.order_id
 WHERE o.order_id IS NULL;
 
 -- Check if all customer_ids in orders exist in customers
 SELECT c.customer_id, o.customer_id
-FROM customers c
-LEFT OUTER JOIN orders o
+FROM orders o
+LEFT OUTER JOIN customers c
 ON c.customer_id=o.customer_id
 WHERE c.customer_id IS NULL;
+
+-- Check if all seller_ids in order_items exist in sellers
+SELECT s.seller_id, oi.seller_id
+FROM order_items oi
+LEFT OUTER JOIN sellers s
+ON oi.seller_id=s.seller_id
+WHERE s.seller_id IS NULL;
 
 -- Check if all zip_code_prefixes in customers and sellers are in geolocation
 SELECT geolocation_zip_code_prefix, customer_zip_code_prefix, seller_zip_code_prefix
 FROM geolocation
-LEFT OUTER JOIN customers
+FULL OUTER JOIN customers
 ON geolocation_zip_code_prefix=customer_zip_code_prefix
-LEFT OUTER JOIN sellers
+FULL OUTER JOIN sellers
 ON geolocation_zip_code_prefix=seller_zip_code_prefix
-WHERE geolocation_zip_code_prefix IS NULL
+WHERE geolocation_zip_code_prefix IS NULL;
+
+-- Check the impact of missing customer_zip_codes based on orders
+WITH missing_customer_zip_codes AS (
+SELECT
+o.order_id,
+c.customer_zip_code_prefix,
+g.geolocation_zip_code_prefix
+FROM orders o
+LEFT OUTER JOIN customers c
+ON o.customer_id=c.customer_id
+LEFT OUTER JOIN geolocation g
+ON c.customer_zip_code_prefix=g.geolocation_zip_code_prefix)
+
+SELECT 
+ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_impacted
+FROM missing_customer_zip_codes;
+
+-- Check the impact of missing seller_zip_codes based on orders
+WITH missing_seller_zip_codes AS (
+SELECT
+oi.order_id,
+s.seller_zip_code_prefix,
+g.geolocation_zip_code_prefix
+FROM order_items oi
+LEFT OUTER JOIN sellers s
+ON oi.seller_id=s.seller_id
+LEFT OUTER JOIN geolocation g
+ON s.seller_zip_code_prefix=g.geolocation_zip_code_prefix)
+
+SELECT 
+ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_impacted
+FROM missing_seller_zip_codes;
 
 -- Null values in customers table
 SELECT
@@ -196,6 +235,8 @@ SUM(CASE WHEN seller_zip_code_prefix IS NULL THEN 1 ELSE 0 END) AS seller_zip_co
 SUM(CASE WHEN seller_city IS NULL THEN 1 ELSE 0 END) AS seller_city_null,
 SUM(CASE WHEN seller_state IS NULL THEN 1 ELSE 0 END) AS pseller_state_null
 FROM sellers;
+
+
 
 -- Duplicates in lookup tables: customers
 WITH duplicate_check AS (
