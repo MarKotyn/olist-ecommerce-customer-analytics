@@ -252,13 +252,24 @@ SELECT
 	ROUND(100.00*SUM(CASE WHEN product_category_name IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_products
 FROM products;
 
+SELECT 
+	p.product_id,
+	p.product_category_name,
+	oi.product_id
+FROM products p
+LEFT OUTER JOIN order_items oi
+ON p.product_id = oi.product_id
+WHERE 
+	product_category_name IS NULL AND
+	oi.product_id IS NULL;
+
 -- Null values in sellers table
 SELECT
 	COUNT(*) AS total_rows,
 	SUM(CASE WHEN seller_id IS NULL THEN 1 ELSE 0 END) AS seller_id_null,
 	SUM(CASE WHEN seller_zip_code_prefix IS NULL THEN 1 ELSE 0 END) AS seller_zip_code_prefix_null,
 	SUM(CASE WHEN seller_city IS NULL THEN 1 ELSE 0 END) AS seller_city_null,
-	SUM(CASE WHEN seller_state IS NULL THEN 1 ELSE 0 END) AS pseller_state_null
+	SUM(CASE WHEN seller_state IS NULL THEN 1 ELSE 0 END) AS seller_state_null
 FROM sellers;
 
 -- Duplicates in customers table: customer_unique_id
@@ -451,7 +462,7 @@ SELECT
 	review_id,
 	review_score,
 	review_comment_title,
-	review_comment_message
+	review_comment_message,
 	order_id,
 	COUNT(order_item_id) AS items_in_order,
 	COUNT(*) AS duplicate_count,
@@ -545,3 +556,27 @@ ON o.order_id = ore.order_id
 WHERE o.order_status = 'unavailable' 
   AND ore.review_comment_message IS NOT NULL
 LIMIT 10;
+
+-- Duplicates in products
+SELECT
+	product_category_name,
+	product_name_length,
+	product_description_length,
+	product_photo_qty,
+	product_weight_g,
+	product_length_cm,
+	product_height_cm,
+	product_width_cm,
+	COUNT(*)
+FROM
+	products
+GROUP BY
+	product_category_name,
+	product_name_length,
+	product_description_length,
+	product_photo_qty,
+	product_weight_g,
+	product_length_cm,
+	product_height_cm,
+	product_width_cm
+HAVING COUNT(*)>1;

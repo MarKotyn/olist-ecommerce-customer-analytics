@@ -5,7 +5,7 @@ SQL:
 1. Table creation and csv import into pgAdmin:
     * **issue**: olist_order_reviews_dataset failed to import
     * **fix**: review_id was set to be primary key in table creation, but it's not an unique value; primary key requirement was excluded from table
-
+   * foreign keys were intentionally omitted during schema generation to allow the ingestion of raw transactional data and enable downstream integrity auditing
 
 2. Data cleaning:
    1. Row count check confirms all rows were imported sucessfuly.
@@ -26,6 +26,7 @@ SQL:
         * **fix** rows missing information were retained as the statistical impact is negligible for general analysis
       * products:
         * **issue** 1.85% of products are missing key information (e.g. product_category_name)
+        * **fix** after cross check with order_items it was validated that all of those products were already sold; becouse of that the safest option for further analysis will be to replace null values with 'unknown'. It will be done later, when new products table will be finalized (translation + fill nulls)
    5. Duplicate value checks highlights:
       * customers: while customer_id is set as primary key, we also have customer_unique_id where we have duplicates; however, it's not a duplicate issue since based on additional check in orders table system is generating new customer_id for each new order_id; customer_unique_id will be used later for client retention analysis
       * geolocation: since we have no primary key and no apparent candidate validation was run on whole rows
@@ -45,8 +46,5 @@ SQL:
             * cross-checking these orders across the pipeline revealed that 100% of them have successfully processed records in `order_payments`, meaning customers were fully charged
             * 99.0% (603 orders) completely lack any corresponding records in `order_items`
         * **root cause**: a deep-dive translation of the customer comments in `order_reviews` for these transactions confirmed a critical operational issue. The Olist platform processed and approved client payments before verifying the physical stock with the seller. When a stock-out was detected post-purchase, the system cancelled the fulfillment process (leaving `order_items` empty) and triggered heavy customer frustration, which perfectly explains the orphan negative reviews identified earlier.
-      * 
+      * products: product_id is a primary key; grouping data by category_name and phisical attributes returns duplicates, however it's to be expected since we can have multiple products with different e.g. color that is not stored in our dataset, since there is no more comparables duplicates will be left in the dataset
       * sellers: seller_id is a primary key, remaining columns don't have enough unique infromation to check for duplicates (different sellers can have the same zip code and city) 
-
-To be checked later:
-- product_ids with missing product_category_name impact
