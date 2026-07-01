@@ -486,3 +486,62 @@ SELECT
 FROM incorrect_reviews
 GROUP BY order_status;
 
+-- Check for possible duplicated orders done by same customer in orders
+WITH order_to_unique_id AS (
+SELECT
+	o.customer_id,
+	o.order_purchase_timestamp,
+	o.order_status,
+	c.customer_unique_id
+FROM orders o
+LEFT OUTER JOIN customers c
+ON o.customer_id=c.customer_id
+)
+
+SELECT
+	customer_unique_id,
+	customer_id,
+	order_purchase_timestamp,
+	COUNT (order_status)
+FROM order_to_unique_id
+GROUP BY
+	customer_unique_id,
+	customer_id,
+	order_purchase_timestamp
+HAVING COUNT (*) > 1;
+
+-- Impact of unavaliable orders
+SELECT
+	ROUND(100.00*SUM(CASE WHEN order_status = 'unavailable' THEN 1 ELSE 0 END)/COUNT(*),2),
+	SUM(CASE WHEN order_status = 'unavailable' THEN 1 ELSE 0 END)
+FROM orders;
+
+-- Investigation of unavaliable orders
+WITH unavailable_mapping AS (
+SELECT
+	o.order_id AS main_order_id,
+	o.order_status,
+	op.order_id AS payment_order_id,
+	oi.order_id AS items_order_id
+FROM orders o
+LEFT OUTER JOIN order_payments op ON o.order_id = op.order_id
+LEFT OUTER JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.order_status = 'unavailable'
+)
+SELECT 
+	COUNT(DISTINCT main_order_id) AS total_unique_unavailable_orders,
+	COUNT(DISTINCT main_order_id) - COUNT(DISTINCT payment_order_id) AS orders_with_zero_payments,
+	COUNT(DISTINCT main_order_id) - COUNT(DISTINCT items_order_id) AS orders_with_zero_items
+FROM unavailable_mapping;
+
+-- Investigation of comments for unavaliable orders
+SELECT 
+    o.order_status,
+    ore.review_score,
+    ore.review_comment_message
+FROM orders o
+LEFT OUTER JOIN order_reviews ore 
+ON o.order_id = ore.order_id
+WHERE o.order_status = 'unavailable' 
+  AND ore.review_comment_message IS NOT NULL
+LIMIT 10;

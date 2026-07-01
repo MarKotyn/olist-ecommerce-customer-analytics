@@ -40,8 +40,13 @@ SQL:
           * **sub-issue** method revealed that there are reviews for order_ids that don't exist in order_items table, further investigation revealed that there is 759 review records for orders that don't exist in order_items
           * **fix** cross reference with orders and order_status revealed that 99.4% of those are either unavaliable or canceled; meaning that system was sending review request without confirmation if the order was approved
           * **edge cases** within 0.6% order_status is 'created', 'invoiced' and 'shipped' pointing at technical system bug; however it's 0.006% of all reviews, so the impact is negligible 
-
+      * orders: order_id is a primary key, let's check if there aren't duplicates
+        * **issue**: 609 orders (0.61% of total) are marked with an `unavailable` status
+            * cross-checking these orders across the pipeline revealed that 100% of them have successfully processed records in `order_payments`, meaning customers were fully charged
+            * 99.0% (603 orders) completely lack any corresponding records in `order_items`
+        * **root cause**: a deep-dive translation of the customer comments in `order_reviews` for these transactions confirmed a critical operational issue. The Olist platform processed and approved client payments before verifying the physical stock with the seller. When a stock-out was detected post-purchase, the system cancelled the fulfillment process (leaving `order_items` empty) and triggered heavy customer frustration, which perfectly explains the orphan negative reviews identified earlier.
+      * 
+      * sellers: seller_id is a primary key, remaining columns don't have enough unique infromation to check for duplicates (different sellers can have the same zip code and city) 
 
 To be checked later:
-- unavaliable order_status
 - product_ids with missing product_category_name impact
