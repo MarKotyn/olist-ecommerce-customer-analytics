@@ -364,3 +364,103 @@ GROUP BY
     payment_sequential
 HAVING 
     COUNT(*) > 1;
+
+-- Duplicates in order_reviews table
+SELECT 
+    review_id, 
+    COUNT(*) AS duplicate_count
+FROM order_reviews
+GROUP BY review_id
+HAVING COUNT(*) > 1;
+
+-- Investigation of duplicates in order_reviews table
+SELECT 
+    review_id,
+	order_id,
+    COUNT(*) AS duplicate_count
+FROM order_reviews
+GROUP BY 
+	review_id,
+	order_id
+HAVING COUNT(*) > 1;
+
+SELECT 
+    review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message,
+	review_creation_date,
+	review_answer_date,
+    COUNT(*) AS duplicate_count
+FROM order_reviews
+GROUP BY 
+	review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message,
+	review_creation_date,
+	review_answer_date
+HAVING COUNT(*) > 1;
+
+-- Check if same customers are making those reviews
+WITH review_to_customer_map AS (
+SELECT
+	ore.review_id,
+	ore.review_score,
+	ore.review_comment_title,
+	ore.review_comment_message,
+	c.customer_unique_id
+FROM order_reviews ore
+LEFT JOIN orders o
+ON ore.order_id = o.order_id
+LEFT JOIN customers c
+ON o.customer_id=c.customer_id
+)
+
+SELECT
+	customer_unique_id,
+	review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message,
+	COUNT(*) AS duplicate_count
+FROM review_to_customer_map
+GROUP BY
+	customer_unique_id,
+	review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message
+HAVING COUNT(*)>1;
+
+-- Check if those reviews are due to multiple order_items in one order
+WITH review_to_items_map AS (
+SELECT
+	ore.review_id,
+	ore.review_score,
+	ore.review_comment_title,
+	ore.review_comment_message,
+	oi.order_id,
+	oi.order_item_id
+FROM order_reviews ore
+LEFT JOIN order_items oi
+ON ore.order_id = oi.order_id
+)
+
+SELECT
+	review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message,
+	order_id,
+	COUNT(order_item_id) AS items_in_order,
+	COUNT(*) AS duplicate_count,
+	CASE WHEN COUNT(order_item_id) = COUNT(*) THEN 1 ELSE 0 END
+FROM review_to_items_map
+GROUP BY
+	review_id,
+	review_score,
+	review_comment_title,
+	review_comment_message,
+	order_id
+HAVING COUNT(*)>1 AND CASE WHEN COUNT(order_item_id) = COUNT(*) THEN 1 ELSE 0 END = 0;
