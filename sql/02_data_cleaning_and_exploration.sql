@@ -338,3 +338,29 @@ ALTER TABLE geolocation RENAME TO geolocation_old;
 
 -- Change name of new geolocation table
 ALTER TABLE geolocation_cleaned RENAME TO geolocation;
+
+-- Duplicates in order_item table
+SELECT 
+    order_id, 
+    order_item_id, 
+    COUNT(*) AS duplicate_count
+FROM 
+    order_items
+GROUP BY 
+    order_id, 
+    order_item_id
+HAVING 
+    COUNT(*) > 1;
+
+-- Duplicates in order_payments table
+SELECT 
+    order_id, 
+    payment_sequential, 
+    COUNT(*) AS duplicate_count
+FROM 
+    order_payments
+GROUP BY 
+    order_id, 
+    payment_sequential
+HAVING 
+    COUNT(*) > 1;
