@@ -1,3 +1,7 @@
+------------------------------------------------
+-- 1. DATASET OVERVIEW
+------------------------------------------------
+
 -- Row count for all tables
 SELECT 'customers' AS table_name, COUNT(*) AS row_count FROM customers
 UNION ALL
@@ -16,6 +20,10 @@ UNION ALL
 SELECT 'products', COUNT (*) FROM products
 UNION ALL
 SELECT 'sellers', COUNT (*) FROM sellers;
+
+------------------------------------------------
+-- 2. DATA CONSISTENCY CHECKS
+------------------------------------------------
 
 -- Check if all product_categories have translation in product_translation
 SELECT 
@@ -136,6 +144,10 @@ ON s.seller_zip_code_prefix=g.geolocation_zip_code_prefix)
 SELECT 
 ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_impacted
 FROM missing_seller_zip_codes;
+
+------------------------------------------------
+-- 3. NULL VALUE ANALYSIS
+------------------------------------------------
 
 -- Null values in customers table
 SELECT
@@ -271,6 +283,10 @@ SELECT
 	SUM(CASE WHEN seller_city IS NULL THEN 1 ELSE 0 END) AS seller_city_null,
 	SUM(CASE WHEN seller_state IS NULL THEN 1 ELSE 0 END) AS seller_state_null
 FROM sellers;
+
+------------------------------------------------
+-- 4. DUPLICATE CHECKS
+------------------------------------------------
 
 -- Duplicates in customers table: customer_unique_id
 SELECT
