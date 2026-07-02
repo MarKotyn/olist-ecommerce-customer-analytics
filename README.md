@@ -57,4 +57,6 @@ SQL:
         * payments were aggregated on order_id level to provide correct metrics for payments with multiple types/installments
         * one row represents one unique customer, each has city and state information
         * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in filed_orders column
+      * **issue** after view creation additional validation returned information that some of our customers changed location between purchases, which explains why in the view we have more records than distinct customer_unique_ids
+      * **fix** vw_customer_summary was renamed to 'vw_customer_summary_powerbi' and will be used to show where customer lived when making purchase; new view with latest city and state information was created for python 'vw_customer_summary_python' this will be used for cohort analysis
       
