@@ -48,3 +48,13 @@ SQL:
         * **root cause**: a deep-dive translation of the customer comments in `order_reviews` for these transactions confirmed a critical operational issue. The Olist platform processed and approved client payments before verifying the seller's physical stock. When a stock-out was detected post-purchase, the system cancelled the fulfilment process (leaving `order_items` empty) and triggered heavy customer frustration, which perfectly explains the orphan negative reviews identified earlier.
       * products: product_id is a primary key; grouping data by category_name and phisical attributes returns duplicates, however it's to be expected since we can have multiple products with different e.g. color that is not stored in our dataset, since there is no more comparables duplicates will be left in the dataset
       * sellers: seller_id is a primary key, remaining columns don't have enough unique infromation to check for duplicates (different sellers can have the same zip code and city)
+
+3. Analytical views - to prepare clean, business-oriented datasets for downstream analysis in Python and Power BI. Instead of querying multiple normalized tables repeatedly, reusable SQL views were created to provide analysis-ready data.
+   1. Customer Summary View 'vw_customer_summary'
+      * the view is designed as the primary dataset for customer analytics, including RFM segmentation, customer lifetime analysis and cohort analysis.
+      * source tables :'customers', 'orders' and 'order_payments' 
+      * design decisions:
+        * payments were aggregated on order_id level to provide correct metrics for payments with multiple types/installments
+        * one row represents one unique customer, each has city and state information
+        * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in filed_orders column
+      
