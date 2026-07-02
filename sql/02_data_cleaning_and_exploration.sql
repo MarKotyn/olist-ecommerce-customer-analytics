@@ -44,7 +44,8 @@ LEFT OUTER JOIN product_translation pt
 ON p.product_category_name = pt.product_category_name
 WHERE product_category_name_english IS NULL;
 
--- Manually insert missing translation into product_translation
+-- Missing category translations identified during validation
+-- Added manually based on category meaning
 INSERT INTO product_translation (product_category_name, product_category_name_english)
 VALUES 
     ('pc_gamer', 'gaming_pc'),
@@ -125,8 +126,9 @@ ON o.customer_id=c.customer_id
 LEFT OUTER JOIN geolocation g
 ON c.customer_zip_code_prefix=g.geolocation_zip_code_prefix)
 
-SELECT 
-ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_impacted
+SELECT
+	SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END) AS order_impacted,
+	ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_pct_impacted
 FROM missing_customer_zip_codes;
 
 -- Check the impact of missing seller_zip_codes based on orders
@@ -141,8 +143,9 @@ ON oi.seller_id=s.seller_id
 LEFT OUTER JOIN geolocation g
 ON s.seller_zip_code_prefix=g.geolocation_zip_code_prefix)
 
-SELECT 
-ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_impacted
+SELECT
+	SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END) AS order_impacted,
+	ROUND(100.00*SUM(CASE WHEN geolocation_zip_code_prefix IS NULL THEN 1 ELSE 0 END)/COUNT(*),3) AS orders_pct_impacted
 FROM missing_seller_zip_codes;
 
 ------------------------------------------------
@@ -205,8 +208,10 @@ FROM order_reviews;
 
 -- How many incomplete reviews do we have in comparison to complete reviews?
 SELECT
-	ROUND(100.00*SUM(CASE WHEN review_comment_title IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_review_titles,
-	ROUND(100.00*SUM(CASE WHEN review_comment_message IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_review_messages
+	SUM(CASE WHEN review_comment_title IS NULL THEN 1 ELSE 0 END) AS missing_review_titles,
+	ROUND(100.00*SUM(CASE WHEN review_comment_title IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_review_titles_pct,
+	SUM(CASE WHEN review_comment_message IS NULL THEN 1 ELSE 0 END) AS missing_review_messages,
+	ROUND(100.00*SUM(CASE WHEN review_comment_message IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_review_messages_pct
 FROM order_reviews;
 
 -- Null values in orders table
@@ -224,8 +229,10 @@ FROM orders;
 -- Investigation of missing dates in orders table based on order_status
 SELECT
 	order_status,
-	ROUND(100.00*order_delivered_carrier_date_null/total_orders,3) AS missing_carrier_dates,
-	ROUND(100.00*order_delivered_customer_date_null/total_orders,3) AS missing_delivered_dates
+	order_delivered_carrier_date_null,
+	ROUND(100.00*order_delivered_carrier_date_null/total_orders,3) AS missing_carrier_dates_pct,
+	order_delivered_customer_date_null,
+	ROUND(100.00*order_delivered_customer_date_null/total_orders,3) AS missing_delivered_dates_pct
 FROM
 (SELECT 
     order_status,
@@ -235,7 +242,7 @@ FROM
 FROM orders
 GROUP BY order_status
 ) AS orders_missing_dates
-WHERE order_status = 'delivered'
+WHERE order_status = 'delivered';
 
 -- Null values in products table
 SELECT
@@ -261,7 +268,8 @@ FROM products
 WHERE product_height_cm IS NULL;
 
 SELECT
-	ROUND(100.00*SUM(CASE WHEN product_category_name IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_products
+	SUM(CASE WHEN product_category_name IS NULL THEN 1 ELSE 0 END) AS missing_products,
+	ROUND(100.00*SUM(CASE WHEN product_category_name IS NULL THEN 1 ELSE 0 END)/COUNT(*),2) AS missing_products_pct
 FROM products;
 
 SELECT 
@@ -402,9 +410,9 @@ HAVING COUNT(*) > 1;
 
 -- Investigation of duplicates in order_reviews table
 SELECT 
-    review_id,
+	review_id, 
 	order_id,
-    COUNT(*) AS duplicate_count
+	COUNT(*) AS duplicate_count
 FROM order_reviews
 GROUP BY 
 	review_id,
