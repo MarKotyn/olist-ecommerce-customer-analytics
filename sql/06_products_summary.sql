@@ -1,4 +1,6 @@
--- Create products view 
+-- Create products view
+-- one row = one product category name
+
 CREATE OR REPLACE VIEW vw_products_summary AS
 WITH products_english AS (
 SELECT

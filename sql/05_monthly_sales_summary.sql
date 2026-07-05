@@ -1,4 +1,6 @@
--- Create monthly sales view 
+-- Create monthly sales view
+-- one row = one month metrics
+
 CREATE OR REPLACE VIEW vw_monthly_sales_summary AS
 WITH orders_summary AS (
 SELECT

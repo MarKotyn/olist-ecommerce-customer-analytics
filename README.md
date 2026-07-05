@@ -49,14 +49,47 @@ SQL:
       * products: product_id is a primary key; grouping data by category_name and phisical attributes returns duplicates, however it's to be expected since we can have multiple products with different e.g. color that is not stored in our dataset, since there is no more comparables duplicates will be left in the dataset
       * sellers: seller_id is a primary key, remaining columns don't have enough unique infromation to check for duplicates (different sellers can have the same zip code and city)
 
-3. Analytical views - to prepare clean, business-oriented datasets for downstream analysis in Python and Power BI. Instead of querying multiple normalized tables repeatedly, reusable SQL views were created to provide analysis-ready data.
-   1. Customer Summary View 'vw_customer_summary'
-      * the view is designed as the primary dataset for customer analytics, including RFM segmentation, customer lifetime analysis and cohort analysis.
-      * source tables :'customers', 'orders' and 'order_payments' 
+Analytical views - to prepare clean, business-oriented datasets for downstream analysis in Python and Power BI. Instead of querying multiple normalized tables repeatedly, reusable SQL views were created to provide analysis-ready data.
+Based on needs it was determined that starting view would be vw_aggregated_payments since it will be then used in more than one final analytica view. It aggregates payment on order_id level.
+
+3. Customer Summary View 'vw_customer_summary_powerbi'
+   * the view is designed as the primary dataset for customer analytics, including RFM segmentation, customer lifetime analysis and cohort analysis.
+     * source tables :'customers', 'orders' and 'vw_aggregated_payments' 
+     * design decisions:
+       * one row = one combination of customer_unique_id + customer_state + customer_city
+       * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in failed_orders column
+     * **issue** after view creation additional validation returned information that some of our customers changed location between purchases, which explains why in the view we have more records than distinct customer_unique_ids
+     * **fix** vw_customer_summary was renamed to 'vw_customer_summary_powerbi' and will be used to show where customer lived when making purchase; new view with latest city and state information was created for python 'vw_customer_summary_python' this will be used for cohort analysis
+
+
+4. Customer Summary View 'vw_customer_summary_python'
+   * to get latest address information for each customer_unique_id separate mapping CTE was created; latest address was determined using ROW_NUMBER()
+     * source tables :'customers', 'orders' and 'vw_aggregated_payments' 
+     * design decisions:
+       * one row = one customer_unique_id (with latest used address)
+       * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in failed_orders column
+
+
+5. Monthly Sales Summary View 'vw_monthly_sales_summary'
+    * the view serves as the primary dataset for time series analysis in Python and executive dashboards in Power BI
+    * source tables: 'orders', 'customers' and 'vw_aggregated_payments'
       * design decisions:
-        * payments were aggregated on order_id level to provide correct metrics for payments with multiple types/installments
-        * one row represents one unique customer, each has city and state information
-        * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in filed_orders column
-      * **issue** after view creation additional validation returned information that some of our customers changed location between purchases, which explains why in the view we have more records than distinct customer_unique_ids
-      * **fix** vw_customer_summary was renamed to 'vw_customer_summary_powerbi' and will be used to show where customer lived when making purchase; new view with latest city and state information was created for python 'vw_customer_summary_python' this will be used for cohort analysis
-      
+        * one row = one month
+        * 'canceled' and 'unavaliable' orders were captured separately
+
+
+6. Products Summary View 'vw_products_summary'
+   * the view supports product performance analysis, category ranking and revenue contribution analysis
+   * source tables: 'products', 'product_translation', 'order_items' and 'orders'
+     * design decisions:
+       * one row = one product category name in English
+       * all product_category_names were translated, for null values 'unknown' was used,
+       * 'canceled' and 'unavaliable' orders were excluded from this view
+
+
+7. Delivery Summary View 'vw_delivery_summary'
+    * the view is designed to monitor fulfillment efficiency, delivery performance and support downstream customer satisfaction analysis
+    * source tables: 'orders'
+      * design decisions:
+        * one row = one month
+        * only order_status 'delivered' is analyzed

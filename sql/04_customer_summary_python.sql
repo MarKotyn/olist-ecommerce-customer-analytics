@@ -1,4 +1,6 @@
 -- Create new customer_summary view for python
+-- one row = one customer_unique_id (with latest used address)
+
 CREATE OR REPLACE VIEW vw_customer_summary_python AS
 WITH customer_address_join AS (
 SELECT

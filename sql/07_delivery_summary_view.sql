@@ -1,4 +1,6 @@
 -- Create delivery summary view
+-- one row = one month
+
 CREATE OR REPLACE VIEW vw_delivery_summary AS
 SELECT
 	DATE_TRUNC('month', order_purchase_timestamp) AS order_month,
