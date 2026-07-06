@@ -1,7 +1,7 @@
 # olist-ecommerce-customer-analytics
 End-to-end e-commerce analytics project using PostgreSQL, Python and Power BI
 
-SQL:
+<b>SQL:</b>
 1. Table creation and CSV import into pgAdmin:
     * **issue**: olist_order_reviews_dataset failed to import
     * **fix**: review_id was set to be primary key in table creation, but it's not an unique value; primary key requirement was excluded from table
@@ -93,3 +93,11 @@ Based on needs it was determined that starting view would be vw_aggregated_payme
       * design decisions:
         * one row = one month
         * only order_status 'delivered' is analyzed
+
+
+8. Order Review Summary View 'vw_order_review_summary'
+   * the view is designed to support customer experience analysis and identify factors influencing review scores
+   * source tables: 'order_reviews', 'orders' and 'customers'
+     * design decisions:
+       * one row = review_id + order_id combination
+       * all orders are analysed, additional columns added to specify order status
