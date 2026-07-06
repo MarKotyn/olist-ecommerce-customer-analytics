@@ -1,3 +1,4 @@
+
 from sqlalchemy import create_engine
 import pandas as pd
 import os
@@ -12,3 +13,10 @@ engine = create_engine(DATABASE_URL)
 def load_view(view_name: str) -> pd.DataFrame:
     query = f"SELECT * FROM {view_name}"
     return pd.read_sql(query, engine)
+
+def basic_overview(df, name: str):
+    print(f"\n==={name}===")
+    print(df.shape)
+    print(df.head())
+    print(df.info())
+    print(df.describe())
