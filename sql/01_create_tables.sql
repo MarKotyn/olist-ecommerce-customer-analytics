@@ -84,4 +84,4 @@ CREATE TABLE IF NOT EXISTS sellers (
 CREATE TABLE IF NOT EXISTS product_translation (
 	product_category_name VARCHAR,
 	product_category_name_english VARCHAR
-) 
+);

@@ -1,5 +1,5 @@
 -- Aggregated payments for multiple views
-CREATE OR REPLACE VIEW aggregated_payments AS
+CREATE OR REPLACE VIEW vw_aggregated_payments AS
 SELECT
 	order_id,
 	SUM(payment_value) AS total_payment
@@ -22,7 +22,7 @@ SELECT
 FROM customers c
 LEFT OUTER JOIN orders o
 ON c.customer_id = o.customer_id
-LEFT OUTER JOIN aggregated_payments ap
+LEFT OUTER JOIN vw_aggregated_payments ap
 ON o.order_id = ap.order_id
 )
 

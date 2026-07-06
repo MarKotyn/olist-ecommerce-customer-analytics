@@ -33,5 +33,6 @@ SELECT
 	CASE WHEN order_delivered_customer_date IS NULL THEN NULL WHEN order_delivered_customer_date::date <= order_estimated_delivery_date::date THEN FALSE ELSE TRUE END AS is_late_delivery
 FROM review_summary_join;
 
+-- Check vw_order_review_summary
 SELECT *
 FROM vw_order_review_summary;
