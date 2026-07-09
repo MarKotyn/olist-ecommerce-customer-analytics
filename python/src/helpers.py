@@ -20,3 +20,11 @@ def basic_overview(df, name: str):
     print(df.head())
     print(df.info())
     print(df.describe())
+
+def assign_f_score(orders):
+    if orders == 1:
+        return 1  # Jednorazowy klient (najniższa ocena)
+    elif orders == 2:
+        return 3  # Klient powracający
+    else:
+        return 5  # Loyal/Power user (3 i więcej zamówień)
