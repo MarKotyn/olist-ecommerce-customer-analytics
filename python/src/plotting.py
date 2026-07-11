@@ -134,3 +134,25 @@ METRIC_CONFIG = {
         "color": "chocolate"
     }
 }
+
+def annotate_bars(ax, fmt="{:.1f}", offset=3):
+    """
+    Add value labels to matplotlib/seaborn barplots.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axis containing the barplot.
+    fmt : str, default="{:.1f}"
+        Label format.
+    offset : int, default=3
+        Distance between the bar and the label (points).
+    """
+
+    for container in ax.containers:
+        ax.bar_label(
+            container,
+            fmt=fmt,
+            padding=offset,
+            fontsize=8
+        )
