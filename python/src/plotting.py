@@ -70,12 +70,12 @@ METRIC_CONFIG = {
     "total_revenue": {
         "y": "total_revenue",
         "color": "royalblue",
-        "label": "Total Revenue ($)"
+        "label": "Total Revenue (BRL)"
     },
     "avg_order_value": {
         "y": "avg_order_value",
         "color": "purple",
-        "label": "Avg Order Value ($)"
+        "label": "Avg Order Value (BRL)"
     },
     "cancellation_rate": {
         "y": "cancellation_rate",
