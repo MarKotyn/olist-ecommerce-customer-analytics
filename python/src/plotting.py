@@ -25,7 +25,7 @@ def set_plot_style():
     })
 
 
-# Create the figure for lineplot
+# Create the figure
 def create_figure(rotate_x = True, sec_y = True):
     fig, ax1 = plt.subplots()
     if rotate_x:

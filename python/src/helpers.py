@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 
-# Connection with database based on infor form .env file
+# Database connection based on credentials stored in the .env file
 load_dotenv()
 
 DATABASE_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
@@ -19,5 +19,5 @@ def basic_overview(df, name: str):
     print(f"\n==={name}===")
     print(df.shape)
     print(df.head())
-    print(df.info())
+    df.info()
     print(df.describe())

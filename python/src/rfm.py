@@ -1,5 +1,3 @@
-import pandas as pd
-
 # RFM Scores and Segments
 RFM_LEVELS = {
     "High": [4, 5],
