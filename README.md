@@ -2,7 +2,15 @@
 
 End-to-end Business Intelligence project analyzing sales performance, customer behaviour, and delivery operations using PostgreSQL, Python, and Power BI.
 
-![Executive Overview](images/executive_summary.png)
+![Dashboard](images/dashboard.png)
+
+---
+
+## Project Overview
+
+This project demonstrates a complete Business Intelligence workflow, transforming raw transactional data into interactive dashboards and business insights.
+
+The solution combines PostgreSQL for database design and analytical views, Python for exploratory data analysis and customer segmentation, and Power BI for interactive reporting.
 
 ---
 
@@ -13,6 +21,49 @@ The project follows a complete end-to-end Business Intelligence workflow:
 1. **SQL** – database design, validation, cleaning and analytical views
 2. **Python** – exploratory data analysis, cohort analysis and RFM segmentation
 3. **Power BI** – interactive dashboard development using a star schema and DAX measures
+
+![Diagram](images/diagram.png)
+
+---
+
+## Tech Stack
+
+| Category              | Technologies                      |
+|-----------------------|-----------------------------------|
+| Query Editor          | pgAdmin                           |
+| Query Language        | PostgreSQL                        |
+| Data Analysis         | Python, Pandas                    |
+| Visualization         | Matplotlib, Seaborn               |
+| Business Intelligence | Power BI                          |
+| Data Modeling         | Star Schema                       |
+| Analytics             | Cohort Analysis, RFM Segmentation |
+| Reporting             | DAX                               |
+
+---
+
+## Dashboard Preview
+
+### Executive Overview
+
+![Executive Overview](images/executive_summary.png)
+
+Provides a high-level summary of business performance, including revenue, order volume, customer activity, product performance, and geographical sales distribution.
+
+---
+
+### Customer Insights
+
+![Customer Insights](images/customer_insights.png)
+
+Focuses on customer behaviour using RFM segmentation, repeat customer analysis, customer lifetime metrics, and geographical customer distribution.
+
+---
+
+### Operations & Delivery
+
+![Operations & Delivery](images/operations_delivery.png)
+
+Analyzes operational efficiency, delivery performance, customer reviews, and the relationship between logistics performance and customer satisfaction.
 
 ---
 
@@ -301,6 +352,8 @@ The final stage of the project consists of an interactive Power BI report built 
 
 The report follows a star schema data model and is organized into three business-oriented dashboards designed for different analytical perspectives.
 
+![Power BI Data Model](images/data_model.png)
+
 ---
 
 ### Data Model
@@ -402,9 +455,13 @@ Examples include:
 
 The complete list of DAX measures and calculations is available in [`powerbi/dax_measures.md`](powerbi/dax_measures.md).
 
+Apart from main building blocks measures served also as Tooltips:
+
+![Tooltips](images/tooltip_example.png)
+
 ---
 
-### Report Design
+## Report Design
 
 The report was designed with a business-first approach, where each dashboard answers a different analytical question:
 
@@ -413,3 +470,61 @@ The report was designed with a business-first approach, where each dashboard ans
 - **Operations & Delivery** – How efficiently are orders fulfilled and how does delivery performance affect customer satisfaction?
 
 Interactive tooltips, drill-down capabilities, and cross-filtering allow users to explore the data while maintaining a clean and consistent report layout.
+
+## Repository Structure
+
+```text
+olist-ecommerce-customer-analytics/
+│
+├── sql/
+│   ├── 01_create_tables.sql
+│   ├── 02_data_validation_and_cleaning.sql
+│   ├── 03_customer_summary_powerbi.sql
+│   ├── 04_customer_summary_python.sql
+│   ├── 05_monthly_sales_summary.sql
+│   ├── 06_products_summary.sql
+│   ├── 07_delivery_summary.sql
+│   ├── 08_order_review_summary.sql
+│   ├── 09_customer_monthly_activity.sql
+│   ├── 10_monthly_product_summary.sql
+│   └── additional_detail.md
+│
+├── python/
+│   ├── notebooks/
+│   │   ├── 01_data_loading.ipynb
+│   │   ├── 02_eda.ipynb
+│   │   ├── 03_cohort_analysis.ipynb
+│   │   └── 04_rfm_customer_segmentation.ipynb
+│   │
+│   ├── src/
+│   │   ├── helpers.py
+│   │   ├── plotting.py
+│   │   └── rfm.py
+│   │
+│   ├── data/
+│   │   ├── customer_summary_rfm.csv
+│   │   └── state_list.csv
+│   │
+│   └── requirements.txt
+│   
+├── powerbi/
+│   ├── Olist_Analytics.pbix
+│   ├── dax_measures.md
+│   └── images/
+│       ├── Customer_Icon.png
+│       ├── Dashboard_Icon.png
+│       ├── Filter_Icon.png
+│       ├── olist_logo.png
+│       └── Product_Icon.png
+│
+├── images/
+│   ├── customer_insights.png
+│   ├── dashboard.png
+│   ├── data_model.png
+│   ├── diagram.png
+│   ├── executive_summary.png
+│   ├── operations_delivery.png
+│   └── tooltip_example.png
+│
+└── README.md
+```
