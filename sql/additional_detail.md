@@ -98,39 +98,3 @@ Based on needs it was determined that starting view would be vw_aggregated_payme
      * design decisions:
        * one row = review_id + order_id combination
        * all orders are analysed, additional columns added to specify order status
-
-### <b>Python</b>
-
-The Python layer is responsible for loading analysis-ready datasets from PostgreSQL, performing data validation and executing advanced analytical workflows.
-
-#### Project structure
-
-* `src/database.py`
-
-  * secure database connection using environment variables (`.env`)
-  * reusable utility for loading analytical SQL views
-  * reusable functions for initial data quality validation
-* `notebooks/01_data_loading.ipynb`
-
-  * loading all analytical views from PostgreSQL into pandas DataFrames
-  * generic validation of each dataset, including:
-
-    * dataset dimensions and schema
-    * data types
-    * missing value overview
-    * duplicate detection
-    * descriptive statistics
-  * investigation of validation findings and documentation of business-expected missing values
-
-#### Data validation highlights
-
-Initial validation confirmed that all analytical views were loaded successfully and match their expected structure.
-
-Validation also distinguished between:
-
-* expected missing values resulting from business rules (e.g. revenue metrics calculated only for successful orders),
-* genuine source-data anomalies requiring investigation.
-
-One edge case was identified during validation: a delivered order without a corresponding payment record, resulting in a missing revenue value. As this affects a single observation only, it is documented as a source data quality issue rather than corrected programmatically.
-
-The next stage of the project focuses on exploratory data analysis, customer cohort analysis, customer segmentation and predictive modelling.
