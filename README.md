@@ -22,7 +22,7 @@ The project follows a complete end-to-end Business Intelligence workflow:
 2. **Python** – exploratory data analysis, cohort analysis and RFM segmentation
 3. **Power BI** – interactive dashboard development using a star schema and DAX measures
 
-![Diagram](images/diagram.png)
+<img src="images/diagram.png" style="width: 300px;">
 
 ---
 
