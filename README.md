@@ -1,139 +1,415 @@
-# olist-ecommerce-customer-analytics
-End-to-end e-commerce analytics project using PostgreSQL, Python and Power BI
+# Olist E-commerce Customer Analytics
 
-### <b>SQL:</b>
-1. Table creation and CSV import into pgAdmin:
-    * **issue**: olist_order_reviews_dataset failed to import
-    * **fix**: review_id was set to be primary key in table creation, but it's not an unique value; primary key requirement was excluded from table
-   * foreign keys were intentionally omitted during schema generation to allow the ingestion of raw transactional data and enable downstream integrity auditing
+End-to-end Business Intelligence project analyzing sales performance, customer behaviour, and delivery operations using PostgreSQL, Python, and Power BI.
 
-2. Data cleaning:
-   1. Row count check confirms all rows were imported successfully.
-   2. Unique value check for product_category_name vs product_category_name_english
-      * **issue**: there are two product_category_name values missing translation
-      * **fix**: manual addition of two translation pairs into product_translation table
-   3. Primary/foreign key checks highlights:
-      * refactored initial approach (LEFT JOIN was used, changed to FULL OUTER JOIN)
-      * validated data integrity between tables for product_id, order_id, customer_id, seller_id, zip_code_prefix
-        * **issue** identified minor gaps for geolocation_zip_code_prefix - 0.002% of orders are impacted due to missing customer_zip_code_prefix from geolocation table and another 0.002% due to missing seller_zip_code_prefix
-        * **fix** rows with missing information were retained as the statistical impact is negligible
-   4. Null value checks highlights:
-      * order_reviews:
-        * **issue** many reviews with missing titles (88.34%) and messages (58.70%)
-        * **fix** reviews with missing information were retained, for most of our analysis we will need the review_score  
-      * orders:
-        * **issue** missing dates in orders table - 0.01% are actual missing data (status "delivered" but no information in carrier_date and delivered_customer_date)
-        * **fix** rows missing information were retained as the statistical impact is negligible for general analysis
-      * products:
-        * **issue** 1.85% of products are missing key information (e.g. product_category_name)
-        * **fix** after cross check with order_items it was validated that all of those products were already sold; becouse of that the safest option for further analysis will be to replace null values with 'unknown'. It will be done later, when the new products table will be finalised (translation + fill nulls)
-   5. Duplicate value checks highlights:
-      * customers: while customer_id is set as primary key, we also have customer_unique_id where we have duplicates; however, it's not a duplicate issue since based on additional check in orders table system is generating new customer_id for each new order_id; customer_unique_id will be used later for client retention analysis
-      * geolocation: since we have no primary key and no apparent candidate validation was run on whole rows
-        * **issue** it was found that 26.18% of rows are duplicated
-        * **fix** to eliminate technical redundancy and optimize database size, new geolocation table was created; identical rows were aggregated using `GROUP BY` filter over all columns into a new structure. The old table was safely archived, and the new dataset was promoted to the primary `geolocation` table.
-      * order_items: check validated that there are no duplicated order_item_ids within each order_id
-      * order_payments: check validated that there are no duplicated payment_sequential within each order_id
-        * **Payment Types Note**: The dataset includes `boleto` as a payment method. According to investigation, *Boleto Bancário* is a widely used Brazilian push-payment method regulated by the Central Bank, functioning similarly to a bank invoice or cash payment. This field is kept in its original name to preserve financial context for further analysis
-      * order_reviews: duplicated review_id confirmed in table creation, impact 0.8% of all reviews; interestingly there are no duplicates when grouping by review_id and order_id, which would signal that duplicate reviews are generated for different orders, however by grouping by all columns except order_id we still get duplicates
-        * **issue** duplicated review_id that have exactly the same values for all columns except order_id
-        * **fix** almost all of those are duplicated due to '1-to-many' relationship, where a single review row is replicated for each individual item within that multi-item order
-          * **sub-issue** method revealed that there are reviews for order_ids that don't exist in order_items table, further investigation revealed that there is 759 review records for orders that don't exist in order_items
-          * **fix** cross reference with orders and order_status revealed that 99.4% of those are either unavaliable or canceled; meaning that system was sending review request without confirmation if the order was approved
-          * **edge cases** within 0.6% order_status is 'created', 'invoiced' and 'shipped' pointing at technical system bug; however it's 0.006% of all reviews, so the impact is negligible 
-      * orders: order_id is a primary key, let's check if there aren't duplicates
-        * **issue**: 609 orders (0.61% of total) are marked with an `unavailable` status
-            * cross-checking these orders across the pipeline revealed that 100% of them have successfully processed records in `order_payments`, meaning customers were fully charged
-            * 99.0% (603 orders) completely lack any corresponding records in `order_items`
-        * **root cause**: a deep-dive translation of the customer comments in `order_reviews` for these transactions confirmed a critical operational issue. The Olist platform processed and approved client payments before verifying the seller's physical stock. When a stock-out was detected post-purchase, the system cancelled the fulfilment process (leaving `order_items` empty) and triggered heavy customer frustration, which perfectly explains the orphan negative reviews identified earlier.
-      * products: product_id is a primary key; grouping data by category_name and phisical attributes returns duplicates, however it's to be expected since we can have multiple products with different e.g. color that is not stored in our dataset, since there is no more comparables duplicates will be left in the dataset
-      * sellers: seller_id is a primary key, remaining columns don't have enough unique infromation to check for duplicates (different sellers can have the same zip code and city)
+![Executive Overview](images/executive_summary.png)
 
-Analytical views - to prepare clean, business-oriented datasets for downstream analysis in Python and Power BI. Instead of querying multiple normalized tables repeatedly, reusable SQL views were created to provide analysis-ready data.
-Based on needs it was determined that starting view would be vw_aggregated_payments since it will be then used in more than one final analytica view. It aggregates payment on order_id level.
+---
 
-3. Customer Summary View 'vw_customer_summary_powerbi'
-   * the view is designed as the primary dataset for customer analytics, including RFM segmentation, customer lifetime analysis and cohort analysis.
-     * source tables :'customers', 'orders' and 'vw_aggregated_payments' 
-     * design decisions:
-       * one row = one combination of customer_unique_id + customer_state + customer_city
-       * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in failed_orders column
-     * **issue** after view creation additional validation returned information that some of our customers changed location between purchases, which explains why in the view we have more records than distinct customer_unique_ids
-     * **fix** vw_customer_summary was renamed to 'vw_customer_summary_powerbi' and will be used to show where customer lived when making purchase; new view with latest city and state information was created for python 'vw_customer_summary_python' this will be used for cohort analysis
+## Project Workflow
 
+The project follows a complete end-to-end Business Intelligence workflow:
 
-4. Customer Summary View 'vw_customer_summary_python'
-   * to get latest address information for each customer_unique_id separate mapping CTE was created; latest address was determined using ROW_NUMBER()
-     * source tables :'customers', 'orders' and 'vw_aggregated_payments' 
-     * design decisions:
-       * one row = one customer_unique_id (with latest used address)
-       * failed orders ('canceled' or 'unavaliable') are excluded from payments metrics, occurence is tracked separately in failed_orders column
+1. **SQL** – database design, validation, cleaning and analytical views
+2. **Python** – exploratory data analysis, cohort analysis and RFM segmentation
+3. **Power BI** – interactive dashboard development using a star schema and DAX measures
 
+---
 
-5. Monthly Sales Summary View 'vw_monthly_sales_summary'
-    * the view serves as the primary dataset for time series analysis in Python and executive dashboards in Power BI
-    * source tables: 'orders', 'customers' and 'vw_aggregated_payments'
-      * design decisions:
-        * one row = one month
-        * 'canceled' and 'unavaliable' orders were captured separately
+## SQL
 
+The SQL layer is responsible for building a clean, analysis-ready PostgreSQL database. It includes database schema creation, data quality validation, data cleaning, and the development of reusable analytical views used later in Python and Power BI.
 
-6. Products Summary View 'vw_products_summary'
-   * the view supports product performance analysis, category ranking and revenue contribution analysis
-   * source tables: 'products', 'product_translation', 'order_items' and 'orders'
-     * design decisions:
-       * one row = one product category name in English
-       * all product_category_names were translated, for null values 'unknown' was used,
-       * 'canceled' and 'unavaliable' orders were excluded from this view
+### Database Setup
 
+The project begins with creating all database tables based on the original Olist dataset and importing the source CSV files into PostgreSQL.
 
-7. Delivery Summary View 'vw_delivery_summary'
-    * the view is designed to monitor fulfillment efficiency, delivery performance and support downstream customer satisfaction analysis
-    * source tables: 'orders'
-      * design decisions:
-        * one row = one month
-        * only order_status 'delivered' is analyzed
+During the import process, one structural issue was identified: the `order_reviews` table could not use `review_id` as a primary key because the dataset contains duplicate review identifiers. After validation, the constraint was removed since the correct business key is the combination of `review_id` and `order_id`.
 
+Foreign key constraints were intentionally omitted during the initial data load to allow importing raw transactional data and performing integrity validation afterwards.
 
-8. Order Review Summary View 'vw_order_review_summary'
-   * the view is designed to support customer experience analysis and identify factors influencing review scores
-   * source tables: 'order_reviews', 'orders' and 'customers'
-     * design decisions:
-       * one row = review_id + order_id combination
-       * all orders are analysed, additional columns added to specify order status
+---
 
-### <b>Python</b>
+### Data Quality Validation
 
-The Python layer is responsible for loading analysis-ready datasets from PostgreSQL, performing data validation and executing advanced analytical workflows.
+A comprehensive validation process was performed before starting the analytical stage.
 
-#### Project structure
+The validation included:
 
-* `src/database.py`
+- Row count verification after data import
+- Primary and foreign key consistency checks
+- Missing value analysis
+- Duplicate detection
+- Product category translation validation
+- Cross-table integrity verification
 
-  * secure database connection using environment variables (`.env`)
-  * reusable utility for loading analytical SQL views
-  * reusable functions for initial data quality validation
-* `notebooks/01_data_loading.ipynb`
+Several data quality issues were identified during this process, including missing translations, duplicated geolocation records, incomplete delivery information, and inconsistencies in review data.
 
-  * loading all analytical views from PostgreSQL into pandas DataFrames
-  * generic validation of each dataset, including:
+Instead of removing records automatically, every issue was investigated individually and documented. Records with negligible analytical impact were retained to preserve the integrity of the original dataset, while deterministic issues (such as missing translations and duplicated geolocation records) were corrected.
 
-    * dataset dimensions and schema
-    * data types
-    * missing value overview
-    * duplicate detection
-    * descriptive statistics
-  * investigation of validation findings and documentation of business-expected missing values
+This approach ensures that all downstream analyses are based on transparent and well-understood data rather than aggressive cleaning.
 
-#### Data validation highlights
+---
 
-Initial validation confirmed that all analytical views were loaded successfully and match their expected structure.
+### Analytical SQL Views
 
-Validation also distinguished between:
+Instead of repeatedly querying multiple normalized tables, reusable SQL views were created to provide clean, business-oriented datasets for Python analysis and Power BI reporting.
 
-* expected missing values resulting from business rules (e.g. revenue metrics calculated only for successful orders),
-* genuine source-data anomalies requiring investigation.
+To avoid duplicated calculations, a shared aggregation layer (`vw_aggregated_payments`) was created as the foundation for multiple analytical views.
 
-One edge case was identified during validation: a delivered order without a corresponding payment record, resulting in a missing revenue value. As this affects a single observation only, it is documented as a source data quality issue rather than corrected programmatically.
+#### `vw_customer_summary_powerbi`
 
-The next stage of the project focuses on exploratory data analysis, customer cohort analysis, customer segmentation and predictive modelling.
+Designed as the primary customer dataset for Power BI.
+
+**Design decisions**
+
+- One row per customer, city and state combination
+- Failed orders are excluded from revenue calculations
+- Failed order counts are retained as a separate metric
+
+This version preserves the customer's historical location, allowing geographical analysis in Power BI.
+
+---
+
+#### `vw_customer_summary_python`
+
+Designed specifically for customer analytics in Python.
+
+**Design decisions**
+
+- One row per customer
+- Latest customer address selected using `ROW_NUMBER()`
+- Failed orders excluded from revenue calculations while tracked separately
+
+This structure supports RFM segmentation, customer lifetime analysis, and cohort analysis.
+
+---
+
+#### `vw_monthly_sales_summary`
+
+Monthly business performance metrics used for time-series analysis and executive dashboards.
+
+**Includes**
+
+- Revenue
+- Order volume
+- Unique customers
+- Average order value
+- Failed orders
+
+---
+
+#### `vw_products_summary`
+
+Aggregated product performance by category.
+
+**Design decisions**
+
+- One row per product category
+- Product names translated into English
+- Missing product categories replaced with `"unknown"`
+- Cancelled and unavailable orders excluded
+
+---
+
+#### `vw_monthly_product_summary`
+
+Monthly product performance prepared for Power BI.
+
+**Includes**
+
+- Monthly revenue
+- Orders
+- Items sold
+- Product category
+
+---
+
+#### `vw_delivery_summary`
+
+Monthly delivery performance metrics.
+
+**Includes**
+
+- Average delivery time
+- Average processing time
+- Average shipping time
+- Delivery variance
+- On-time delivery rate
+
+Only successfully delivered orders are included.
+
+---
+
+#### `vw_order_review_summary`
+
+Customer review metrics supporting customer experience analysis.
+
+**Design decisions**
+
+- One row per `review_id + order_id`
+- Review scores preserved for all orders
+- Order status retained for additional analysis
+
+---
+
+#### `vw_customer_monthly_activity`
+
+Monthly customer activity dataset supporting retention analysis.
+
+**Includes**
+
+- Purchase month
+- Cohort month
+- Monthly customer revenue
+- Customer activity timeline
+
+---
+
+## Python
+
+The Python layer is responsible for loading analytical datasets from PostgreSQL, validating their structure, and performing exploratory and customer-focused analyses.
+
+To improve code quality and maintainability, the project was refactored into reusable helper modules responsible for database connectivity, visualization styling, and RFM segmentation logic.
+
+---
+
+### Project Structure
+
+#### `helpers.py`
+
+Reusable database and validation utilities.
+
+**Responsibilities**
+
+- Secure PostgreSQL connection using environment variables (`.env`)
+- Loading analytical SQL views into pandas DataFrames
+- Basic dataset inspection utilities for validation
+
+---
+
+#### `plotting.py`
+
+Shared visualization utilities used across all notebooks.
+
+**Features**
+
+- Centralized Matplotlib and Seaborn styling
+- Reusable figure creation and formatting functions
+- Consistent metric configuration for charts
+- Automatic bar value annotations
+
+Using a common plotting module ensures visual consistency throughout the entire analysis while minimizing duplicated code.
+
+---
+
+#### `rfm.py`
+
+Reusable RFM segmentation module.
+
+**Includes**
+
+- RFM score mapping
+- Segment definitions
+- Customer classification logic
+- Helper functions for assigning frequency scores and customer segments
+
+Separating the segmentation logic into a dedicated module makes the analysis reusable and significantly simplifies the notebook implementation.
+
+---
+
+### Analytical Workflow
+
+The Python analysis consists of four notebooks, each focusing on a different stage of the analytical workflow.
+
+#### `01_data_loading.ipynb`
+
+Loads all analytical SQL views into pandas DataFrames and performs an initial validation of each dataset.
+
+Validation includes:
+
+- Dataset dimensions
+- Data types
+- Missing value analysis
+- Duplicate detection
+- Descriptive statistics
+
+The validation confirms that the analytical SQL views were loaded successfully and identifies expected missing values resulting from business rules.
+
+---
+
+#### `02_eda.ipynb`
+
+Exploratory Data Analysis covering multiple business areas.
+
+The notebook investigates:
+
+- Sales performance
+- Product category performance
+- Customer purchasing behaviour
+- Delivery performance
+- Customer reviews
+
+The objective is to identify key business trends, detect operational patterns, and establish the foundation for more advanced customer analyses.
+
+---
+
+#### `03_cohort_analysis.ipynb`
+
+Customer retention analysis using purchase cohorts.
+
+The notebook includes:
+
+- Customer cohort creation
+- Monthly retention matrix
+- Revenue retention analysis
+- Cohort visualization
+
+This analysis evaluates how customer activity changes over time and highlights long-term retention patterns.
+
+---
+
+#### `04_rfm_customer_segmentation.ipynb`
+
+Customer segmentation based on the RFM methodology.
+
+The notebook includes:
+
+- Recency, Frequency and Monetary score calculation
+- Customer segmentation using predefined RFM rules
+- Segment profiling
+- Revenue contribution by segment
+- Business recommendations for each customer segment
+
+The final customer segmentation dataset is exported as a CSV file and later used in the Power BI dashboard.
+
+---
+
+### Key Design Decisions
+
+Several design decisions were made to improve the quality and maintainability of the analytical workflow.
+
+- SQL analytical views are used as the primary data source instead of raw transactional tables.
+- Reusable helper modules eliminate duplicated code across notebooks.
+- Visualization styling is centralized to ensure consistent reporting.
+- RFM segmentation logic is fully modularized and separated from notebook code.
+- Each notebook represents a dedicated stage of the analytical workflow, creating a clear end-to-end pipeline from data loading to customer segmentation.
+
+## Power BI
+
+The final stage of the project consists of an interactive Power BI report built on top of the analytical SQL views and the customer segmentation dataset generated in Python.
+
+The report follows a star schema data model and is organized into three business-oriented dashboards designed for different analytical perspectives.
+
+---
+
+### Data Model
+
+The Power BI model follows a star schema architecture built around analytical fact tables and shared dimension tables.
+
+#### Fact Tables
+
+- `fct_MonthlySales`
+- `fct_MonthlyProducts`
+- `fct_Delivery`
+- `fct_OrderReviews`
+- `fct_CustomerActivity`
+
+#### Dimension Tables
+
+- `dim_Calendar`
+- `dim_Customer`
+- `dim_Geo`
+
+The RFM segmentation dataset generated in Python serves as the customer dimension, allowing customer-level analysis without additional Power Query transformations.
+
+Business logic was intentionally implemented in SQL and Python before loading the data into Power BI, resulting in a clean semantic model with minimal transformations inside the report.
+
+---
+
+### Dashboard Pages
+
+#### Executive Overview
+
+The Executive Overview page provides a high-level summary of overall business performance.
+
+It focuses on key business metrics and sales trends, allowing decision-makers to quickly assess the health of the business.
+
+**Includes**
+
+- Revenue and order KPIs
+- Monthly revenue trend
+- Monthly order volume
+- Top-performing product categories
+- Revenue distribution by state
+- Executive business highlights
+
+---
+
+#### Customer Insights
+
+The Customer Insights page focuses on customer behaviour and segmentation.
+
+It combines customer metrics with the RFM segmentation created in Python to identify the most valuable customer groups and evaluate purchasing patterns.
+
+**Includes**
+
+- Customer distribution across RFM segments
+- Revenue contribution by segment
+- RFM score heatmap
+- Customer geographical distribution
+- Customer lifetime metrics
+- Repeat customer analysis
+
+---
+
+#### Operations & Delivery
+
+The Operations & Delivery page evaluates logistics performance and customer satisfaction.
+
+The dashboard combines operational KPIs with review metrics to analyze how delivery performance impacts the customer experience.
+
+**Includes**
+
+- On-time delivery performance
+- Delivery and processing times
+- Monthly review sentiment
+- Delivery variance against estimated dates
+- Relationship between delivery time and customer review scores
+
+---
+
+### DAX Measures
+
+Business metrics were implemented using reusable DAX measures organized into logical measure groups.
+
+The report includes calculations for:
+
+- Sales KPIs
+- Customer metrics
+- Operational performance
+- Time intelligence
+
+Examples include:
+
+- Total Revenue
+- Average Order Value
+- Repeat Customer Rate
+- On-Time Delivery Rate
+- Average Delivery Days
+- Revenue Month-over-Month
+- Revenue Year-to-Date
+
+The complete list of DAX measures and calculations is available in [`powerbi/dax_measures.md`](powerbi/dax_measures.md).
+
+---
+
+### Report Design
+
+The report was designed with a business-first approach, where each dashboard answers a different analytical question:
+
+- **Executive Overview** – How is the business performing?
+- **Customer Insights** – Who are our customers and which segments generate the most value?
+- **Operations & Delivery** – How efficiently are orders fulfilled and how does delivery performance affect customer satisfaction?
+
+Interactive tooltips, drill-down capabilities, and cross-filtering allow users to explore the data while maintaining a clean and consistent report layout.
